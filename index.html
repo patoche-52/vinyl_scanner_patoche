@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Patoche Vinyl"/>
+<meta name="theme-color" content="#111111"/>
+<title>Patoche Vinyl</title>
+
+<!-- PWA Manifest inline -->
+<script>
+const manifestData = {
+  name: "Patoche Vinyl",
+  short_name: "Vinyl",
+  start_url: "./",
+  display: "standalone",
+  background_color: "#111111",
+  theme_color: "#111111",
+  orientation: "portrait",
+  icons: [{
+    src: "data:image/svg+xml," + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'>
+      <rect width='512' height='512' rx='80' fill='%23111'/>
+      <circle cx='256' cy='256' r='220' fill='%231a1a1a' stroke='%23333' stroke-width='6'/>
+      <circle cx='256' cy='256' r='165' fill='none' stroke='%23222' stroke-width='4'/>
+      <circle cx='256' cy='256' r='110' fill='none' stroke='%23222' stroke-width='4'/>
+      <circle cx='256' cy='256' r='55' fill='%23e8c84a' stroke='%23c9a832' stroke-width='4'/>
+      <circle cx='256' cy='256' r='20' fill='%23111'/>
+    </svg>`),
+    sizes: "512x512", type: "image/svg+xml", purpose: "any maskable"
+  }]
+};
+const blob = new Blob([JSON.stringify(manifestData)], {type:"application/json"});
+const link = document.createElement("link");
+link.rel = "manifest"; link.href = URL.createObjectURL(blob);
+document.head.appendChild(link);
+</script>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --gold: #e8c84a;
+    --gold-dim: #c9a832;
+    --bg: #0e0e0e;
+    --bg2: #161616;
+    --bg3: #1e1e1e;
+    --border: #2a2a2a;
+    --text: #e8e8e0;
+    --muted: #555;
+    --green: #5dba7a;
+    --red: #c06060;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Playfair Display', Georgia, serif;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    overflow-x: hidden;
+  }
+
+  #app {
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 72px;
+  }
+
+  /* ── Header ── */
+  .header {
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  .header-title { font-size: 18px; font-weight: 900; color: var(--gold); letter-spacing: 3px; }
+  .header-sub { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 2px; }
+
+  /* ── Nav ── */
+  nav {
+    position: fixed;
+    bottom: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 100%; max-width: 480px;
+    display: flex;
+    background: #0a0a0a;
+    border-top: 1px solid var(--border);
+    z-index: 100;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  nav button {
+    flex: 1; padding: 10px 0;
+    background: none; border: none;
+    color: var(--muted); cursor: pointer;
+    font-size: 10px; font-family: 'DM Mono', monospace;
+    transition: color .2s;
+  }
+  nav button.active { color: var(--gold); }
+  nav button .nav-icon { font-size: 22px; display: block; margin-bottom: 2px; }
+
+  /* ── Sections ── */
+  .section { padding: 20px 16px; flex: 1; }
+
+  /* ── Boutons ── */
+  .btn {
+    width: 100%; padding: 14px;
+    border-radius: 10px; cursor: pointer;
+    font-size: 15px; font-weight: 700;
+    font-family: 'Playfair Display', serif;
+    transition: all .15s; border: none;
+  }
+  .btn-gold { background: var(--gold); color: #111; }
+  .btn-gold:active { background: var(--gold-dim); }
+  .btn-outline { background: transparent; border: 1px solid var(--gold); color: var(--gold); }
+  .btn-outline:active { background: #e8c84a11; }
+  .btn-danger { background: transparent; border: 1px solid #4a1a1a; color: var(--red); }
+  .btn:disabled { opacity: .35; cursor: not-allowed; }
+  .btn + .btn { margin-top: 10px; }
+
+  /* ── Mode cards ── */
+  .mode-card {
+    width: 100%; padding: 18px 20px; margin-bottom: 12px;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 14px; cursor: pointer;
+    display: flex; align-items: center; gap: 16px;
+    text-align: left; transition: border-color .2s;
+  }
+  .mode-card:active { border-color: var(--gold); }
+  .mode-icon { font-size: 32px; flex-shrink: 0; }
+  .mode-title { color: var(--gold); font-weight: 700; font-size: 16px; }
+  .mode-sub { color: var(--muted); font-size: 12px; margin-top: 3px; font-family: 'DM Mono', monospace; }
+
+  /* ── Caméra ── */
+  #camera-wrap { position: relative; background: #000; }
+  #video { width: 100%; max-height: 62vh; object-fit: cover; display: block; }
+  .viewfinder {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  .vf-rect {
+    border: 2px solid var(--gold);
+    border-radius: 10px;
+    box-shadow: 0 0 0 2000px rgba(0,0,0,.45);
+  }
+  .vf-barcode { width: 78%; height: 70px; border-radius: 6px; position: relative; }
+  .vf-scan-line {
+    position: absolute; left: 0; right: 0; top: 50%; height: 2px;
+    background: var(--gold);
+    animation: scanline 2s ease-in-out infinite;
+    opacity: .7;
+  }
+  .vf-pochette { width: 210px; height: 210px; }
+  @keyframes scanline { 0%,100%{opacity:.2} 50%{opacity:.9} }
+
+  .cam-flash {
+    position: absolute; inset: 0;
+    background: white; opacity: .85; z-index: 20; pointer-events: none;
+  }
+  .cam-overlay {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    padding: 14px 16px 18px;
+    background: linear-gradient(transparent, rgba(0,0,0,.92));
+  }
+  .cam-hint { color: #aaa; font-size: 12px; text-align: center; margin-bottom: 12px;
+               font-family: 'DM Mono', monospace; }
+  .cam-btns { display: flex; gap: 10px; }
+
+  /* ── Spinner ── */
+  .spinner-wrap { padding: 48px; text-align: center; }
+  .spinner {
+    width: 56px; height: 56px; border-radius: 50%;
+    border: 3px solid var(--border); border-top-color: var(--gold);
+    animation: spin .8s linear infinite; margin: 0 auto;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner-msg { color: var(--gold); margin-top: 18px; font-size: 15px; }
+  .spinner-sub { color: var(--muted); font-size: 12px; margin-top: 4px; font-family: 'DM Mono', monospace; }
+
+  /* ── Result card ── */
+  .result-card {
+    background: var(--bg3); border-radius: 14px; padding: 18px; margin-bottom: 14px;
+  }
+  .result-head { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; }
+  .result-artist { color: var(--gold); font-weight: 700; font-size: 17px; }
+  .result-title { color: #ccc; font-size: 15px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; }
+  .tag {
+    background: #252525; color: #777; border-radius: 6px;
+    padding: 3px 9px; font-size: 11px; font-family: 'DM Mono', monospace;
+  }
+  .conf-badge {
+    border-radius: 20px; padding: 2px 10px;
+    font-size: 11px; font-weight: 700; font-family: 'DM Mono', monospace;
+  }
+  .conf-haute { background: #5dba7a22; color: var(--green); }
+  .conf-moyenne { background: #e8c84a22; color: var(--gold); }
+  .conf-faible { background: #c0606022; color: var(--red); }
+  .note-text { color: var(--muted); font-size: 11px; margin-top: 8px; font-style: italic; }
+
+  /* ── Record list ── */
+  .record-card {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; cursor: pointer;
+    transition: border-color .15s;
+  }
+  .record-card:active { border-color: var(--gold); }
+  .record-head { display: flex; align-items: center; gap: 10px; }
+  .record-artist { color: var(--gold); font-weight: 700; font-size: 14px;
+                   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .record-title { color: #bbb; font-size: 13px;
+                  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .record-meta { font-size: 11px; color: var(--muted); margin-top: 2px;
+                 font-family: 'DM Mono', monospace; }
+  .record-body {
+    margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
+  }
+  .detail-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; }
+  .detail-key { color: var(--muted); font-family: 'DM Mono', monospace; }
+  .detail-val { color: #ccc; }
+
+  /* ── Search ── */
+  .search-input {
+    width: 100%; padding: 11px 14px; background: var(--bg3);
+    border: 1px solid var(--border); border-radius: 10px;
+    color: var(--text); font-size: 15px; font-family: 'Playfair Display', serif;
+    outline: none; margin-bottom: 14px; -webkit-appearance: none;
+  }
+  .search-input::placeholder { color: #333; }
+
+  /* ── Empty ── */
+  .empty { text-align: center; padding-top: 60px; color: #333; }
+  .empty p { margin-top: 16px; font-size: 14px; line-height: 1.6; }
+
+  /* ── Export ── */
+  .stats-box {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px; margin-bottom: 18px;
+  }
+  .stat-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 14px; }
+  .stat-val { color: var(--gold); font-weight: 700; font-family: 'DM Mono', monospace; }
+  .prompt-box {
+    margin-top: 20px; padding: 16px; background: var(--bg2);
+    border: 1px solid var(--border); border-radius: 12px;
+  }
+  .prompt-label { color: var(--gold); font-size: 13px; margin-bottom: 8px; }
+  .prompt-text { color: #888; font-size: 12px; line-height: 1.8; font-style: italic; }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
+    z-index: 200; background: #1a2a1a; border: 1px solid #3a6a3a;
+    border-radius: 10px; padding: 10px 18px;
+    color: var(--green); font-size: 13px; white-space: nowrap;
+    box-shadow: 0 4px 24px rgba(0,0,0,.7);
+    font-family: 'DM Mono', monospace;
+    animation: toastin .2s ease;
+  }
+  @keyframes toastin { from { opacity:0; top:0 } to { opacity:1; top:14px } }
+
+  /* ── Erreur ── */
+  .error-box {
+    background: #200; border: 1px solid #500; border-radius: 12px;
+    padding: 24px; text-align: center; margin: 20px 0;
+  }
+  .error-icon { font-size: 36px; margin-bottom: 12px; }
+  .error-msg { color: var(--red); font-size: 14px; margin-bottom: 16px; line-height: 1.5; }
+
+  /* ── Vinyl SVG ── */
+  .vinyl-svg { display: inline-block; }
+  .vinyl-spin { animation: vinylspin 2s linear infinite; }
+  @keyframes vinylspin { to { transform: rotate(360deg); } }
+
+  /* ── Install banner ── */
+  .install-banner {
+    margin: 12px 16px 0;
+    background: #1a1a0a; border: 1px solid #4a4a1a;
+    border-radius: 10px; padding: 12px 14px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .install-banner p { color: #c8a830; font-size: 12px; line-height: 1.5;
+                      font-family: 'DM Mono', monospace; flex: 1; }
+  .install-close { color: #555; background: none; border: none; font-size: 18px;
+                   cursor: pointer; padding: 0 4px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="header">
+    <div id="header-disc"></div>
+    <div>
+      <div class="header-title">PATOCHE VINYL</div>
+      <div class="header-sub" id="header-count">0 disques · collection locale</div>
+    </div>
+  </header>
+
+  <div id="install-banner" class="install-banner" style="display:none">
+    <p>📲 Installe l'app : Safari → <strong>Partager</strong> → <strong>Sur l'écran d'accueil</strong></p>
+    <button class="install-close" onclick="dismissInstall()">✕</button>
+  </div>
+
+  <main id="main"></main>
+
+  <nav>
+    <button class="active" onclick="setView('scan')" id="nav-scan">
+      <span class="nav-icon">💿</span>Scanner
+    </button>
+    <button onclick="setView('list')" id="nav-list">
+      <span class="nav-icon">📋</span><span id="nav-list-count">0</span>
+    </button>
+    <button onclick="setView('export')" id="nav-export">
+      <span class="nav-icon">⬇️</span>Export
+    </button>
+  </nav>
+</div>
+
+<div id="toast-wrap"></div>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────────────────
+// ⚠️  REMPLACE PAR TA CLÉ API ANTHROPIC
+const CLAUDE_API_KEY = "let CLAUDE_API_KEY = localStorage.getItem("claude-api-key") || "";";if (!CLAUDE_API_KEY) {
+  CLAUDE_API_KEY = prompt("Entre ta clé API Anthropic :");
+  if (CLAUDE_API_KEY) localStorage.setItem("claude-api-key", CLAUDE_API_KEY);
+}
+const STORE_KEY = "patoche-vinyl-v1";
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let collection = JSON.parse(localStorage.getItem(STORE_KEY) || "[]");
+let currentView = "scan";
+let stream = null;
+
+// ── Storage ───────────────────────────────────────────────────────────────────
+function save() {
+  localStorage.setItem(STORE_KEY, JSON.stringify(collection));
+  updateHeader();
+}
+
+function updateHeader() {
+  document.getElementById("header-count").textContent =
+    `${collection.length} disque${collection.length!==1?"s":""} · collection locale`;
+  document.getElementById("nav-list-count").textContent = `(${collection.length})`;
+}
+
+// ── Vinyl SVG ─────────────────────────────────────────────────────────────────
+function vinylSVG(size=44, spin=false) {
+  return `<svg class="vinyl-svg${spin?" vinyl-spin":""}" width="${size}" height="${size}" viewBox="0 0 100 100">
+    <circle cx="50" cy="50" r="48" fill="#1c1c1c" stroke="#3a3a3a" stroke-width="1.5"/>
+    <circle cx="50" cy="50" r="40" fill="none" stroke="#242424" stroke-width=".8"/>
+    <circle cx="50" cy="50" r="30" fill="none" stroke="#242424" stroke-width=".8"/>
+    <circle cx="50" cy="50" r="20" fill="none" stroke="#242424" stroke-width=".8"/>
+    <circle cx="50" cy="50" r="11" fill="#e8c84a" stroke="#c9a832" stroke-width="1"/>
+    <circle cx="50" cy="50" r="4" fill="#1c1c1c"/>
+  </svg>`;
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, duration=2500) {
+  const el = document.createElement("div");
+  el.className = "toast"; el.textContent = msg;
+  document.getElementById("toast-wrap").appendChild(el);
+  setTimeout(() => el.remove(), duration);
+}
+
+// ── Caméra ────────────────────────────────────────────────────────────────────
+async function startCamera() {
+  if (stream) { stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode:"environment", width:{ideal:1920}, height:{ideal:1080} },
+    audio: false
+  });
+  const v = document.getElementById("video");
+  if (v) { v.srcObject = stream; await v.play(); }
+}
+
+function stopCamera() {
+  if (stream) { stream.getTracks().forEach(t=>t.stop()); stream=null; }
+}
+
+function captureFrame() {
+  const v = document.getElementById("video");
+  const maxDim = 1200;
+  const scale = Math.min(1, maxDim/Math.max(v.videoWidth, v.videoHeight));
+  const c = document.createElement("canvas");
+  c.width = Math.round(v.videoWidth*scale);
+  c.height = Math.round(v.videoHeight*scale);
+  c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
+  const b64 = c.toDataURL("image/jpeg", 0.88).split(",")[1];
+  c.width=0; c.height=0; // libère
+  return b64;
+}
+
+// ── Claude Vision ─────────────────────────────────────────────────────────────
+async function analyzeWithClaude(b64, hint) {
+  const isBarcode = hint==="barcode";
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": CLAUDE_API_KEY,
+      "anthropic-version": "2023-06-01"
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 800,
+      messages: [{
+        role: "user",
+        content: [
+          { type:"image", source:{ type:"base64", media_type:"image/jpeg", data:b64 } },
+          { type:"text", text:`Expert vinyle. ${isBarcode
+            ? "Lis le code-barre EAN/UPC visible et identifie le disque."
+            : "Identifie ce disque vinyle depuis sa pochette."}
+Réponds UNIQUEMENT en JSON valide sans markdown ni commentaire :
+{"artiste":"","titre":"","annee":"","label":"","genre":"","style":"","format":"LP","pays":"","bpm":"","tonalite":"","confiance":"haute|moyenne|faible","note":""}` }
+        ]
+      }]
+    })
+  });
+  const d = await res.json();
+  if (d.error) throw new Error(d.error.message);
+  const txt = (d.content?.[0]?.text||"").replace(/```json|```/g,"").trim();
+  return JSON.parse(txt);
+}
+
+// ── VUES ──────────────────────────────────────────────────────────────────────
+
+function setView(v) {
+  stopCamera();
+  currentView = v;
+  document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
+  document.getElementById("nav-"+v).classList.add("active");
+  render();
+}
+
+function render() {
+  const main = document.getElementById("main");
+  if (currentView==="scan") renderScan(main);
+  else if (currentView==="list") renderList(main);
+  else renderExport(main);
+}
+
+// ── VUE SCAN ─────────────────────────────────────────────────────────────────
+function renderScan(main) {
+  main.innerHTML = `
+    <div class="section">
+      <div style="text-align:center;margin-bottom:28px;padding-top:8px">
+        ${vinylSVG(60)}
+        <h2 style="color:var(--gold);margin-top:14px;font-size:20px;letter-spacing:1px">Scanner un vinyle</h2>
+        <p style="color:var(--muted);font-size:12px;margin-top:4px;font-family:'DM Mono',monospace">
+          Photo analysée par Claude puis effacée immédiatement
+        </p>
+      </div>
+      <button class="mode-card" onclick="startScanMode('pochette')">
+        <span class="mode-icon">🎨</span>
+        <div><div class="mode-title">Pochette</div>
+        <div class="mode-sub">Pointe la caméra sur la couverture du disque</div></div>
+      </button>
+      <button class="mode-card" onclick="startScanMode('barcode')">
+        <span class="mode-icon">▌▌▌</span>
+        <div><div class="mode-title">Code-barre EAN</div>
+        <div class="mode-sub">Pointe sur le code-barre au dos de la pochette</div></div>
+      </button>
+    </div>`;
+}
+
+async function startScanMode(hint) {
+  const main = document.getElementById("main");
+  const isBarcode = hint==="barcode";
+
+  main.innerHTML = `
+    <div id="camera-wrap" class="section" style="padding:0">
+      <div style="position:relative;background:#000">
+        <video id="video" playsinline muted style="width:100%;max-height:62vh;object-fit:cover;display:block"></video>
+        <div class="viewfinder">
+          ${isBarcode
+            ? `<div class="vf-rect vf-barcode"><div class="vf-scan-line"></div></div>`
+            : `<div class="vf-rect vf-pochette"></div>`}
+        </div>
+        <div id="flash-overlay" style="display:none;position:absolute;inset:0;background:white;opacity:.85;z-index:20;pointer-events:none"></div>
+        <div class="cam-overlay">
+          <p class="cam-hint">${isBarcode
+            ? "Centre le code-barre dans le cadre"
+            : "Cadre la pochette dans le carré"}</p>
+          <div class="cam-btns">
+            <button class="btn btn-outline" onclick="setView('scan')">✕ Annuler</button>
+            <button class="btn btn-gold" id="capture-btn" onclick="doCapture('${hint}')" disabled>📷 Capturer</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  try {
+    await startCamera();
+    const btn = document.getElementById("capture-btn");
+    if (btn) btn.disabled = false;
+  } catch(e) {
+    main.innerHTML = `
+      <div class="section">
+        <div class="error-box">
+          <div class="error-icon">📷</div>
+          <div class="error-msg">${e.name==="NotAllowedError"
+            ? "Accès caméra refusé.<br>Réglages iPhone → Safari → Caméra → Autoriser"
+            : "Caméra inaccessible : "+e.message}</div>
+          <button class="btn btn-outline" onclick="setView('scan')">Retour</button>
+        </div>
+      </div>`;
+  }
+}
+
+async function doCapture(hint) {
+  const flash = document.getElementById("flash-overlay");
+  if (flash) { flash.style.display="block"; }
+  await new Promise(r=>setTimeout(r,120));
+
+  const b64 = captureFrame();
+  stopCamera(); // caméra coupée immédiatement
+
+  const main = document.getElementById("main");
+  main.innerHTML = `
+    <div class="section spinner-wrap">
+      ${vinylSVG(64, true)}
+      <p class="spinner-msg">Claude analyse l'image…</p>
+      <p class="spinner-sub">Photo analysée puis effacée</p>
+    </div>`;
+
+  try {
+    const meta = await analyzeWithClaude(b64, hint);
+    // b64 hors scope → GC, aucune persistance
+    meta._uid = Date.now()+"-"+Math.random();
+    showResult(meta);
+  } catch(e) {
+    const main2 = document.getElementById("main");
+    main2.innerHTML = `
+      <div class="section">
+        <div class="error-box">
+          <div class="error-icon">⚠️</div>
+          <div class="error-msg">${e.message}</div>
+          <button class="btn btn-outline" onclick="setView('scan')">Réessayer</button>
+        </div>
+      </div>`;
+  }
+}
+
+function showResult(meta) {
+  const cc = meta.confiance==="haute"?"conf-haute":meta.confiance==="moyenne"?"conf-moyenne":"conf-faible";
+  const tags = [meta.annee,meta.label,meta.genre,meta.style,meta.format,meta.pays]
+    .filter(Boolean).map(t=>`<span class="tag">${t}</span>`).join("");
+
+  document.getElementById("main").innerHTML = `
+    <div class="section">
+      <div class="result-card" style="border:1px solid var(--border)">
+        <div class="result-head">
+          ${vinylSVG(44)}
+          <div>
+            <div class="result-artist">${meta.artiste||"Artiste inconnu"}</div>
+            <div class="result-title">${meta.titre||""}</div>
+          </div>
+        </div>
+        <div class="tags">${tags}</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="color:var(--muted);font-size:11px;font-family:'DM Mono',monospace">Confiance :</span>
+          <span class="conf-badge ${cc}">${meta.confiance}</span>
+        </div>
+        ${meta.note?`<p class="note-text">${meta.note}</p>`:""}
+      </div>
+      <button class="btn btn-gold" onclick='confirmAdd(${JSON.stringify(JSON.stringify(meta))})'>
+        ✅ Ajouter à la collection
+      </button>
+      <button class="btn btn-outline" onclick="setView('scan')">✕ Ignorer</button>
+    </div>`;
+}
+
+function confirmAdd(metaStr) {
+  const meta = JSON.parse(metaStr);
+  collection.push(meta);
+  save();
+  toast(`✅ ${meta.artiste} — ${meta.titre}`);
+  setView("scan");
+}
+
+// ── VUE LIST ─────────────────────────────────────────────────────────────────
+function renderList(main) {
+  main.innerHTML = `
+    <div class="section">
+      <input class="search-input" type="search" placeholder="🔎 Rechercher…"
+        oninput="filterList(this.value)" id="search-input"/>
+      <div id="list-content"></div>
+    </div>`;
+  filterList("");
+}
+
+function filterList(q) {
+  const filtered = q
+    ? collection.filter(r=>[r.artiste,r.titre,r.genre,r.label]
+        .some(f=>f?.toLowerCase().includes(q.toLowerCase())))
+    : collection;
+
+  const el = document.getElementById("list-content");
+  if (!el) return;
+
+  if (!filtered.length) {
+    el.innerHTML = `<div class="empty">${vinylSVG(56)}
+      <p>${collection.length===0?"Commence par scanner un disque !":"Aucun résultat"}</p></div>`;
+    return;
+  }
+
+  el.innerHTML = filtered.map(r => {
+    const cc = r.confiance==="haute"?"conf-haute":r.confiance==="moyenne"?"conf-moyenne":"conf-faible";
+    return `
+    <div class="record-card" onclick="toggleRecord('${r._uid}')">
+      <div class="record-head">
+        ${vinylSVG(32)}
+        <div style="flex:1;min-width:0">
+          <div class="record-artist">${r.artiste||"?"}</div>
+          <div class="record-title">${r.titre||""}</div>
+          <div class="record-meta">${[r.annee,r.label,r.genre].filter(Boolean).join(" · ")}</div>
+        </div>
+        <span style="color:var(--muted);font-size:14px" id="chevron-${r._uid}">▼</span>
+      </div>
+      <div id="body-${r._uid}" style="display:none" class="record-body">
+        ${[["Style",r.style],["Format",r.format],["Pays",r.pays],
+           ["BPM",r.bpm||"—"],["Tonalité",r.tonalite||"—"]]
+          .filter(([,v])=>v).map(([k,v])=>`
+          <div class="detail-row">
+            <span class="detail-key">${k}</span>
+            <span class="detail-val">${v}</span>
+          </div>`).join("")}
+        ${r.confiance?`<div class="detail-row">
+          <span class="detail-key">Confiance</span>
+          <span class="conf-badge ${cc}">${r.confiance}</span>
+        </div>`:""}
+        ${r.note?`<p class="note-text">${r.note}</p>`:""}
+        <button class="btn btn-danger" style="margin-top:10px"
+          onclick="event.stopPropagation();deleteRecord('${r._uid}')">
+          Supprimer
+        </button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function toggleRecord(uid) {
+  const body = document.getElementById("body-"+uid);
+  const chev = document.getElementById("chevron-"+uid);
+  if (!body) return;
+  const open = body.style.display!=="none";
+  body.style.display = open?"none":"block";
+  if (chev) chev.textContent = open?"▼":"▲";
+}
+
+function deleteRecord(uid) {
+  collection = collection.filter(r=>r._uid!==uid);
+  save();
+  filterList(document.getElementById("search-input")?.value||"");
+}
+
+// ── VUE EXPORT ────────────────────────────────────────────────────────────────
+function renderExport(main) {
+  const missing = collection.filter(r=>!r.bpm).length;
+  const faible = collection.filter(r=>r.confiance==="faible").length;
+
+  main.innerHTML = `
+    <div class="section">
+      <div style="text-align:center;margin-bottom:24px;padding-top:8px">
+        ${vinylSVG(60)}
+        <h2 style="color:var(--gold);margin-top:14px;font-size:18px">Export pour Claude Code</h2>
+        <p style="color:var(--muted);font-size:12px;margin-top:4px;font-family:'DM Mono',monospace">
+          Donne le JSON à Claude Code sur ton PC
+        </p>
+      </div>
+      <div class="stats-box">
+        <div class="stat-row"><span style="color:var(--muted)">Disques</span><span class="stat-val">${collection.length}</span></div>
+        <div class="stat-row"><span style="color:var(--muted)">BPM manquants</span><span class="stat-val">${missing}</span></div>
+        <div class="stat-row"><span style="color:var(--muted)">Confiance faible</span><span class="stat-val">${faible}</span></div>
+      </div>
+      <button class="btn btn-gold" onclick="exportJSON()" ${collection.length===0?"disabled":""}>
+        ⬇️ Télécharger le JSON
+      </button>
+      <div class="prompt-box">
+        <div class="prompt-label">Prompt pour Claude Code :</div>
+        <div class="prompt-text">
+          "Voici ma collection vinyle JSON. Crée une base SQLite avec les tables
+          collection et suggestions_enchainements. Génère les enchaînements
+          optimaux par BPM et tonalité (roue de Camelot)."
+        </div>
+      </div>
+    </div>`;
+}
+
+function exportJSON() {
+  const clean = collection.map(({_uid,...r})=>r);
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(clean,null,2)],{type:"application/json"}));
+  a.download = "patoche_collection_vinyle.json";
+  a.click();
+}
+
+// ── Install banner ────────────────────────────────────────────────────────────
+function dismissInstall() {
+  localStorage.setItem("install-dismissed","1");
+  document.getElementById("install-banner").style.display="none";
+}
+
+function checkInstall() {
+  const isStandalone = window.navigator.standalone;
+  const dismissed = localStorage.getItem("install-dismissed");
+  if (!isStandalone && !dismissed) {
+    document.getElementById("install-banner").style.display="flex";
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.getElementById("header-disc").innerHTML = vinylSVG(38);
+updateHeader();
+checkInstall();
+render();
+
+// Service Worker pour PWA offline
+if ("serviceWorker" in navigator) {
+  const sw = `
+    const CACHE = "patoche-vinyl-v1";
+    self.addEventListener("install", e => {
+      e.waitUntil(caches.open(CACHE).then(c => c.addAll(["./"])));
+    });
+    self.addEventListener("fetch", e => {
+      e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
+    });
+  `;
+  const blob = new Blob([sw], {type:"text/javascript"});
+  navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
+}
+</script>
+</body>
+</html>
