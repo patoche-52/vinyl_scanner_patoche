@@ -158,6 +158,7 @@ var collection = JSON.parse(localStorage.getItem('pv-col') || '[]');
 var apiKey = localStorage.getItem('pv-key') || '';
 var currentView = 'scan';
 var camStream = null;
+var camZoom = 1; var camZoomMin = 1; var camZoomMax = 5; var camZoomStep = 0.5;
 
 function save() {
   localStorage.setItem('pv-col', JSON.stringify(collection));
@@ -264,6 +265,11 @@ async function startCam(hint) {
     '<div id="flash" style="display:none" class="flash"></div>' +
     '<div class="cam-overlay">' +
     '<p class="cam-hint">' + (isBarcode ? 'Centre le code-barre dans le cadre' : 'Cadre la pochette dans le carré') + '</p>' +
+    '<div id="zoom-controls" style="display:none;justify-content:center;align-items:center;gap:14px;margin-bottom:10px">' +
+    '<button class="btn btn-outline" style="flex:none;width:44px;height:44px;padding:0;font-size:22px;border-radius:50%" onclick="adjustZoom(-1)">−</button>' +
+    '<span id="zoom-val" style="color:#e8c84a;font-family:monospace;font-size:14px;min-width:36px;text-align:center">1×</span>' +
+    '<button class="btn btn-outline" style="flex:none;width:44px;height:44px;padding:0;font-size:22px;border-radius:50%" onclick="adjustZoom(1)">+</button>' +
+    '</div>' +
     '<div class="cam-btns">' +
     '<button class="btn btn-outline" onclick="setView(\'scan\')">✕ Annuler</button>' +
     '<button class="btn btn-gold" id="capbtn" onclick="doCapture(\'' + hint + '\')" disabled>📷 Capturer</button>' +
@@ -277,6 +283,18 @@ async function startCam(hint) {
     var v = document.getElementById('video');
     v.srcObject = camStream;
     await v.play();
+    var track = camStream.getVideoTracks()[0];
+    var caps = track.getCapabilities ? track.getCapabilities() : {};
+    if (caps.zoom) {
+      camZoomMin = caps.zoom.min; camZoomMax = caps.zoom.max;
+      camZoomStep = Math.max(caps.zoom.step || 0.1, 0.1);
+      camZoom = caps.zoom.min;
+      track.applyConstraints({ advanced: [{ zoom: camZoom }] }).catch(function(){});
+      var zc = document.getElementById('zoom-controls');
+      if (zc) zc.style.display = 'flex';
+      var zv = document.getElementById('zoom-val');
+      if (zv) zv.textContent = camZoom.toFixed(1) + '×';
+    }
     var btn = document.getElementById('capbtn');
     if (btn) btn.disabled = false;
   } catch(e) {
@@ -289,6 +307,15 @@ async function startCam(hint) {
       '<button class="btn btn-outline" onclick="setView(\'scan\')">Retour</button>' +
       '</div></div>';
   }
+}
+
+function adjustZoom(dir) {
+  if (!camStream) return;
+  var track = camStream.getVideoTracks()[0];
+  camZoom = Math.max(camZoomMin, Math.min(camZoomMax, camZoom + dir * camZoomStep));
+  track.applyConstraints({ advanced: [{ zoom: camZoom }] }).catch(function(){});
+  var zv = document.getElementById('zoom-val');
+  if (zv) zv.textContent = camZoom.toFixed(1) + '×';
 }
 
 function stopCam() {
