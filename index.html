@@ -143,7 +143,7 @@ nav button.active{color:#e8c84a}
       <span class="nav-icon">💿</span>Scanner
     </button>
     <button onclick="setView('list')" id="nav-list">
-      <span class="nav-icon">📋</span><span id="nav-count">0</span>
+      <span class="nav-icon">🎵</span>Albums<span id="nav-count"></span>
     </button>
     <button onclick="setView('export')" id="nav-export">
       <span class="nav-icon">⬇️</span>Export
@@ -163,7 +163,7 @@ var camZoom = 1; var camZoomMin = 1; var camZoomMax = 5; var camZoomStep = 0.5;
 function save() {
   localStorage.setItem('pv-col', JSON.stringify(collection));
   document.getElementById('hcount').textContent = collection.length + ' disque' + (collection.length !== 1 ? 's' : '') + ' · collection locale';
-  document.getElementById('nav-count').textContent = '(' + collection.length + ')';
+  document.getElementById('nav-count').textContent = collection.length ? ' (' + collection.length + ')' : '';
 }
 
 // ── SVG Vinyl ──────────────────────────────────────────────────────────
@@ -455,7 +455,11 @@ function filterList(q) {
         .map(function(x) { return '<div class="detail-row"><span class="detail-key">' + x[0] + '</span><span class="detail-val">' + x[1] + '</span></div>'; }).join('') +
       (r.confiance ? '<div class="detail-row"><span class="detail-key">Confiance</span><span class="conf-badge ' + cc + '">' + r.confiance + '</span></div>' : '') +
       (r.note ? '<p class="note-txt">' + r.note + '</p>' : '') +
-      '<button class="btn btn-danger" style="margin-top:10px" onclick="event.stopPropagation();delRec(\'' + uid + '\')">Supprimer</button>' +
+      '<div style="display:flex;gap:8px;margin-top:10px">' +
+      '<button class="btn btn-outline" style="flex:1;font-size:12px;padding:10px 4px" onclick="event.stopPropagation();renderChain(\'' + uid + '\')">🎚️ Enchaînements</button>' +
+      '<button class="btn btn-outline" style="flex:1;font-size:12px;padding:10px 4px" onclick="event.stopPropagation();renderAlbumInfos(\'' + uid + '\')">📖 Infos</button>' +
+      '</div>' +
+      '<button class="btn btn-danger" style="margin-top:8px" onclick="event.stopPropagation();delRec(\'' + uid + '\')">Supprimer</button>' +
       '</div></div>';
   }).join('');
 }
@@ -475,6 +479,179 @@ function delRec(uid) {
   filterList('');
 }
 
+// ── CAMELOT + MATCHING ─────────────────────────────────────────────────
+var CAMELOT = {
+  'C':'8B','Do':'8B','G':'9B','Sol':'9B','D':'10B','Ré':'10B','Re':'10B',
+  'A':'11B','La':'11B','E':'12B','Mi':'12B','B':'1B','Si':'1B',
+  'F#':'2B','Gb':'2B','Fa#':'2B','Db':'3B','C#':'3B','Ab':'4B','G#':'4B',
+  'Eb':'5B','D#':'5B','Mib':'5B','Bb':'6B','A#':'6B','Sib':'6B','F':'7B','Fa':'7B',
+  'Am':'8A','Lam':'8A','Em':'9A','Mim':'9A','Bm':'10A','Sim':'10A',
+  'F#m':'11A','Fa#m':'11A','C#m':'12A','G#m':'1A','Labm':'1A',
+  'Ebm':'2A','D#m':'2A','Bbm':'3A','A#m':'3A','Fm':'4A','Fam':'4A',
+  'Cm':'5A','Dom':'5A','Gm':'6A','Solm':'6A','Dm':'7A','Rém':'7A','Rem':'7A'
+};
+
+function camelotKey(t) {
+  if (!t) return null;
+  t = t.trim();
+  if (/^\d{1,2}[AB]$/i.test(t)) return t.toUpperCase();
+  if (CAMELOT[t]) return CAMELOT[t];
+  for (var k in CAMELOT) { if (k.toLowerCase() === t.toLowerCase()) return CAMELOT[k]; }
+  return null;
+}
+
+function camelotCompat(k1, k2) {
+  if (!k1 || !k2) return false;
+  var n1 = parseInt(k1), l1 = k1.slice(-1), n2 = parseInt(k2), l2 = k2.slice(-1);
+  if (n1 === n2 && l1 === l2) return true;
+  if (n1 === n2) return true;
+  return l1 === l2 && ((n2 - n1 + 12) % 12 === 1 || (n1 - n2 + 12) % 12 === 1);
+}
+
+function bpmCompat(b1, b2) {
+  var f1 = parseFloat(b1), f2 = parseFloat(b2);
+  if (!f1 || !f2) return false;
+  var r = f1 / f2;
+  return (r >= 0.95 && r <= 1.05) || (r >= 1.90 && r <= 2.10) || (r >= 0.475 && r <= 0.525);
+}
+
+function scoreMatch(src, tgt) {
+  var s = 0;
+  if (camelotCompat(camelotKey(src.tonalite), camelotKey(tgt.tonalite))) s += 3;
+  if (bpmCompat(src.bpm, tgt.bpm)) s += 3;
+  if (src.genre && tgt.genre && src.genre.toLowerCase() === tgt.genre.toLowerCase()) s += 2;
+  if (src.style && tgt.style && src.style.toLowerCase() === tgt.style.toLowerCase()) s += 1;
+  return s;
+}
+
+// ── ENCHAÎNEMENTS ──────────────────────────────────────────────────────
+function renderChain(uid) {
+  var src = collection.find(function(x) { return x._uid === uid; });
+  if (!src) return;
+  var hasBpm = src.bpm && parseFloat(src.bpm) > 0;
+  var hasTon = !!src.tonalite;
+  var ck = camelotKey(src.tonalite);
+  document.getElementById('main').innerHTML =
+    '<div class="section">' +
+    '<button class="btn btn-outline" style="margin-bottom:16px" onclick="setView(\'list\')">← Mes Albums</button>' +
+    '<h2 style="color:#e8c84a;margin-bottom:4px;font-size:16px">🎚️ Enchaînements</h2>' +
+    '<p style="color:#555;font-size:12px;font-family:monospace;margin-bottom:16px">' + (src.artiste || '?') + ' — ' + (src.titre || '') +
+    (hasBpm ? ' · ' + src.bpm + ' BPM' : '') + (ck ? ' · ' + ck : '') + '</p>' +
+    (!hasBpm || !hasTon ? '<div class="error-box" style="background:#1a1500;border-color:#5a4500;margin-bottom:16px">' +
+    '<div class="error-msg" style="color:#c8a840;font-size:12px">BPM ou tonalité manquants — résultats basés sur le style uniquement.<br>Complète via Claude pour de meilleurs enchaînements.</div>' +
+    '<button class="btn btn-gold" style="margin-top:10px" onclick="fetchBpmTon(\'' + uid + '\')">Compléter via Claude</button>' +
+    '</div>' : '') +
+    '<div id="chain-list"></div></div>';
+
+  var scored = collection.filter(function(x) { return x._uid !== uid; })
+    .map(function(r) { return { r: r, s: scoreMatch(src, r) }; })
+    .filter(function(x) { return x.s > 0; })
+    .sort(function(a, b) { return b.s - a.s; })
+    .slice(0, 12);
+
+  var el = document.getElementById('chain-list');
+  if (!el) return;
+  if (!scored.length) {
+    el.innerHTML = '<div class="empty">' + disc(48, false) + '<p>Aucun enchaînement trouvé.<br>Complète les BPM et tonalités de ta collection.</p></div>';
+    return;
+  }
+  el.innerHTML = scored.map(function(x, i) {
+    var r = x.r;
+    var bOk = bpmCompat(src.bpm, r.bpm);
+    var tOk = camelotCompat(camelotKey(src.tonalite), camelotKey(r.tonalite));
+    var rck = camelotKey(r.tonalite);
+    return '<div class="record-card">' +
+      '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">' +
+      '<span style="color:#555;font-family:monospace;font-size:11px">' + (i+1) + '.</span>' +
+      (tOk ? '<span class="tag" style="background:#1a1a2a;color:#8080e8">Camelot ✓</span>' : '') +
+      (bOk ? '<span class="tag" style="background:#1a2a1a;color:#5dba7a">BPM ✓</span>' : '') +
+      '</div>' +
+      '<div class="record-artist">' + (r.artiste || '?') + '</div>' +
+      '<div class="record-title">' + (r.titre || '') + '</div>' +
+      '<div class="record-meta">' + [r.bpm ? r.bpm + ' BPM' : null, rck, r.genre].filter(Boolean).join(' · ') + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+async function fetchBpmTon(uid) {
+  var r = collection.find(function(x) { return x._uid === uid; });
+  if (!r) return;
+  var btn = document.querySelector('#chain-list ~ div button, .error-box button');
+  if (btn) { btn.disabled = true; btn.textContent = 'Analyse en cours…'; }
+  try {
+    var res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6', max_tokens: 150,
+        messages: [{ role: 'user', content: 'Disque : ' + r.artiste + ' — ' + r.titre + ' (' + [r.annee, r.genre, r.pays].filter(Boolean).join(', ') + '). BPM moyen et tonalité principale. JSON uniquement : {"bpm":"120","tonalite":"Am"}' }]
+      })
+    });
+    var d = await res.json();
+    if (d.error) throw new Error(d.error.message);
+    var meta = JSON.parse(d.content[0].text.replace(/```json|```/g, '').trim());
+    if (meta.bpm) r.bpm = meta.bpm;
+    if (meta.tonalite) r.tonalite = meta.tonalite;
+    save();
+    toast('✅ BPM et tonalité mis à jour !');
+    renderChain(uid);
+  } catch(e) { toast('⚠️ ' + e.message); }
+}
+
+// ── INFOS ALBUM ────────────────────────────────────────────────────────
+async function renderAlbumInfos(uid) {
+  var r = collection.find(function(x) { return x._uid === uid; });
+  if (!r) return;
+  document.getElementById('main').innerHTML =
+    '<div class="section">' +
+    '<button class="btn btn-outline" style="margin-bottom:16px" onclick="setView(\'list\')">← Mes Albums</button>' +
+    '<h2 style="color:#e8c84a;margin-bottom:4px;font-size:16px">📖 ' + (r.artiste || '?') + '</h2>' +
+    '<p style="color:#555;font-size:13px;margin-bottom:20px;font-family:monospace">' + (r.titre || '') + (r.annee ? ' · ' + r.annee : '') + '</p>' +
+    (r._infos
+      ? '<div class="result-card"><p class="prompt-text" style="color:#ccc;line-height:1.9;white-space:pre-wrap">' + r._infos + '</p></div>'
+      : '<div class="spinner-wrap">' + disc(48, true) + '<p class="spinner-msg">Claude recherche…</p></div>') +
+    '</div>';
+  if (r._infos) return;
+  try {
+    var res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6', max_tokens: 600,
+        messages: [{ role: 'user', content: 'Expert musique et vinyle. Album : ' + r.artiste + ' — ' + r.titre + ' (' + [r.annee, r.label, r.genre, r.style, r.pays].filter(Boolean).join(', ') + ').\nEn français, 3 paragraphes courts :\n1. Contexte historique et artistique\n2. Anecdote ou fait marquant\n3. Pourquoi écouter cet album\nTon : disquaire passionné, concis.' }]
+      })
+    });
+    var d = await res.json();
+    if (d.error) throw new Error(d.error.message);
+    r._infos = d.content[0].text;
+    document.getElementById('main').innerHTML =
+      '<div class="section">' +
+      '<button class="btn btn-outline" style="margin-bottom:16px" onclick="setView(\'list\')">← Mes Albums</button>' +
+      '<h2 style="color:#e8c84a;margin-bottom:4px;font-size:16px">📖 ' + (r.artiste || '?') + '</h2>' +
+      '<p style="color:#555;font-size:13px;margin-bottom:20px;font-family:monospace">' + (r.titre || '') + (r.annee ? ' · ' + r.annee : '') + '</p>' +
+      '<div class="result-card"><p class="prompt-text" style="color:#ccc;line-height:1.9;white-space:pre-wrap">' + r._infos + '</p></div>' +
+      '</div>';
+  } catch(e) {
+    document.getElementById('main').innerHTML =
+      '<div class="section">' +
+      '<button class="btn btn-outline" style="margin-bottom:16px" onclick="setView(\'list\')">← Mes Albums</button>' +
+      '<div class="error-box"><div class="error-icon">⚠️</div>' +
+      '<div class="error-msg">' + e.message + '</div>' +
+      '<button class="btn btn-outline" onclick="renderAlbumInfos(\'' + uid + '\')">Réessayer</button>' +
+      '</div></div>';
+  }
+}
+
 // ── EXPORT ─────────────────────────────────────────────────────────────
 function renderExport() {
   var missing = collection.filter(function(r) { return !r.bpm; }).length;
@@ -489,10 +666,32 @@ function renderExport() {
     '<div class="stat-row"><span style="color:#555">BPM manquants</span><span class="stat-val">' + missing + '</span></div>' +
     '<div class="stat-row"><span style="color:#555">Confiance faible</span><span class="stat-val">' + faible + '</span></div>' +
     '</div>' +
-    '<button class="btn btn-gold" onclick="exportJSON()" ' + (collection.length === 0 ? 'disabled' : '') + '>⬇️ Télécharger le JSON</button>' +
+    '<button class="btn btn-gold" onclick="shareJSON()" ' + (collection.length === 0 ? 'disabled' : '') + '>⬆️ Partager le JSON</button>' +
+    '<button class="btn btn-outline" onclick="exportJSON()" ' + (collection.length === 0 ? 'disabled' : '') + '>⬇️ Télécharger le JSON</button>' +
     '<div class="prompt-box"><div class="prompt-label">Prompt pour Claude Code :</div>' +
     '<div class="prompt-text">"Voici ma collection vinyle JSON. Crée une base SQLite et génère les enchaînements optimaux par BPM et tonalité (roue de Camelot)."</div></div>' +
     '</div>';
+}
+
+async function shareJSON() {
+  var clean = collection.map(function(r) { var o = Object.assign({}, r); delete o._uid; return o; });
+  var json = JSON.stringify(clean, null, 2);
+  var file = new File([json], 'patoche_collection_vinyle.json', { type: 'application/json' });
+  if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: 'Patoche Vinyl — Collection' });
+    } catch(e) {
+      if (e.name !== 'AbortError') toast('⚠️ Partage échoué : ' + e.message);
+    }
+  } else if (navigator.share) {
+    try {
+      await navigator.share({ title: 'Patoche Vinyl', text: json });
+    } catch(e) {
+      if (e.name !== 'AbortError') toast('⚠️ Partage échoué : ' + e.message);
+    }
+  } else {
+    toast('⚠️ Partage non supporté — utilise Télécharger');
+  }
 }
 
 function exportJSON() {
